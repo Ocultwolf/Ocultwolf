@@ -44,6 +44,8 @@ uv run python cli.py docs search "pregunta" --source langchain
 
 Los vectorstores deben existir en `data/vectorstores/` (o el CLI usará las rutas heredadas).
 
+Agentes destacados: `code_review`, `vector_agent`, `trading` (investigación y backtesting cripto).
+
 ```
 mongoai-pro/
 ├── src/                # package code (agents + FastAPI)

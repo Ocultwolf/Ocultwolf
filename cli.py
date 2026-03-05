@@ -25,6 +25,7 @@ from agents.evaluator import agent as evaluator_agent
 from agents.code_review import agent as code_review_agent
 from agents.orchestrator import agent as orchestrator_agent
 from agents.vector_agent import agent as vector_agent
+from agents.trading import agent as trading_agent
 
 console = Console()
 app = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -40,6 +41,7 @@ AGENTS: Dict[str, object] = {
     "code_review": code_review_agent,
     "orchestrator": orchestrator_agent,
     "vector_agent": vector_agent,
+    "trading": trading_agent,
 }
 
 VECTORSTORE_SOURCES = {
@@ -98,7 +100,8 @@ def list_agents() -> None:
         "evaluator": "Generador + evaluador",
         "code_review": "Revisor/refactor con LangGraph",
         "orchestrator": "Orquestador multi-node",
-        "vector_agent": "Consulta vectorstores"
+        "vector_agent": "Consulta vectorstores",
+        "trading": "Investiga y backtestea estrategias cripto"
     }
     for key in AGENTS:
         table.add_row(key, descriptions.get(key, "-"))
