@@ -24,3 +24,5 @@ src/agents/vectorstore_openclaw*/
 .vscode/
 .idea/
 .DS_Store
+
+data/cache/
