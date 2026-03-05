@@ -1,0 +1,30 @@
+[project]
+name = "mongoai-pro"
+version = "0.1.0"
+description = "LangGraph-based agents + FastAPI scaffolding for MongoAI."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "faiss-cpu>=1.13.2",
+    "fastapi[standard]>=0.117.1",
+    "jinja2>=3.1.6",
+    "langchain==1.0.5",
+    "langchain-anthropic==1.0.2",
+    "langchain-community>=0.4.1",
+    "langchain-openai==1.0.2",
+    "langchain-text-splitters>=1.0.0",
+    "langgraph==1.0.3",
+    "langgraph-checkpoint-postgres==3.0.1",
+    "psycopg[binary]>=3.2.10",
+    "duckduckgo-search>=6.2.6",
+]
+
+[dependency-groups]
+dev = [
+    "grandalf>=0.8",
+    "ipykernel>=6.30.1",
+    "langgraph-cli[inmem]==0.4.7",
+]
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["*"]

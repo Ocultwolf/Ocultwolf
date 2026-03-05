@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: my_course_agent_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: my_course_agent
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - my_course_agent_network
+
+  moltbot:
+    image: ghcr.io/moltbot/moltbot:latest
+    container_name: moltbot_app
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/my_course_agent
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+    ports:
+      - "3000:3000"
+    volumes:
+      - moltbot_data:/app/data
+    networks:
+      - my_course_agent_network
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  moltbot_data:
+
+networks:
+  my_course_agent_network:
+    driver: bridge

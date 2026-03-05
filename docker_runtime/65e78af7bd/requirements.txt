@@ -1,0 +1,7 @@
+langchain
+requests
+beautifulsoup4
+fastapi
+uvicorn
+aiofiles
+python-multipart

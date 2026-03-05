@@ -1,0 +1,26 @@
+# Python / build
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Environments
+.venv/
+.env
+.env.local
+
+# LangGraph runtime artifacts
+.langgraph_api/
+openclaw_faiss_index/
+src/agents/vectorstore_langchain_langgraph/
+src/agents/support/vectorstore_langchain_langgraph/
+src/agents/vectorstore_openclaw*/
+
+# Editors / tools
+.vscode/
+.idea/
+.DS_Store
