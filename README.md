@@ -34,6 +34,16 @@ python -m agents.main  # or uv run langgraph dev
 
 ## Project Layout
 
+## CLI Usage
+
+```
+uv run python cli.py agents list
+uv run python cli.py agents chat code_review
+uv run python cli.py docs search "pregunta" --source langchain
+```
+
+Los vectorstores deben existir en `data/vectorstores/` (o el CLI usará las rutas heredadas).
+
 ```
 mongoai-pro/
 ├── src/                # package code (agents + FastAPI)
