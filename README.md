@@ -67,3 +67,13 @@ mongoai-pro/
 4. Decide whether to keep FAISS/vectorstore artifacts; currently ignored to keep the repo light.
 
 Feel free to add CONTRIBUTING instructions, CI workflows, or deployment scripts once we know the target hosting surface.
+
+## CRT Strategy (video-based)
+
+Para replicar el flujo simplificado de CRT (diario→4H→1H):
+
+```
+uv run python scripts/crt_strategy.py --ticker BTC-USD --days 180
+```
+
+Usa `--target daily_high` si prefieres apuntar directamente al máximo del rango diario anterior; por defecto se usa el 50% del rango.
