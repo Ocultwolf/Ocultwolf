@@ -26,3 +26,5 @@ src/agents/vectorstore_openclaw*/
 .DS_Store
 
 data/cache/
+src/agents/vectorstore_langchain_langgraph
+src/agents/vectorstore_openclaw

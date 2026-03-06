@@ -113,9 +113,7 @@ def run_docker(state: ExecutorState):
     except subprocess.CalledProcessError as exc:
         return {
             "execution_success": False,
-            "execution_error": f"Build failed: {exc.stderr}
----
-{exc.stdout}",
+            "execution_error": f"Build failed: {exc.stderr}\n---\n{exc.stdout}",
             "execution_stdout": exc.stdout,
         }
 

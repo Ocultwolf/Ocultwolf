@@ -14,7 +14,7 @@ from duckduckgo_search import DDGS
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from langgraph.graph import END, START, MessagesState, StateGraph
 
 CACHE_DIR = Path("data/cache")
@@ -27,6 +27,7 @@ execution_llm = init_chat_model("openai:gpt-4.1-mini", temperature=0)
 
 
 class StrategyPlan(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     name: str
     description: str
     ticker: str
@@ -34,7 +35,7 @@ class StrategyPlan(BaseModel):
     data_window_days: int | None = Field(default=365, description="Ventana de lookback")
     strategy_type: Literal["sma_cross", "rsi", "macd", "boll_breakout", "trend_rsi"]
     params: Dict[str, float] = Field(default_factory=dict)
-    trend_filter: Dict[str, float] | None = Field(
+    trend_filter: Dict[str, Any] | None = Field(
         default=None, description="Filtro de tendencia opcional (p.ej. {'type':'sma','window':200})"
     )
     risk_notes: str | None = None
@@ -161,21 +162,28 @@ def ema(series: pd.Series, span: int) -> pd.Series:
     return series.ewm(span=span, adjust=False).mean()
 
 
+
+def _get_param(params: Dict[str, float], *keys, default: float) -> float:
+    for key in keys:
+        if key in params:
+            return params[key]
+    return default
+
 def generate_signal(plan: StrategyPlan, close: pd.Series, high: pd.Series, low: pd.Series) -> pd.Series:
     stype = plan.strategy_type
     params = plan.params
     signal = pd.Series(0, index=close.index)
 
     if stype == "sma_cross":
-        fast = int(params.get("fast_window", 20))
-        slow = int(params.get("slow_window", 50))
+        fast = int(_get_param(params, "fast_window", "sma_fast_period", "fast", default=20))
+        slow = int(_get_param(params, "slow_window", "sma_slow_period", "slow", default=50))
         ma_fast = close.rolling(fast).mean()
         ma_slow = close.rolling(slow).mean()
         signal = (ma_fast > ma_slow).astype(int)
     elif stype == "rsi":
-        length = int(params.get("rsi_length", 14))
-        overbought = float(params.get("overbought", 70))
-        oversold = float(params.get("oversold", 30))
+        length = int(_get_param(params, "rsi_length", "length", default=14))
+        overbought = float(_get_param(params, "overbought", "rsi_overbought", default=70))
+        oversold = float(_get_param(params, "oversold", "rsi_oversold", default=30))
         delta = close.diff()
         gain = delta.clip(lower=0).rolling(length).mean()
         loss = (-delta.clip(upper=0)).rolling(length).mean()
@@ -184,24 +192,24 @@ def generate_signal(plan: StrategyPlan, close: pd.Series, high: pd.Series, low: 
         signal = (rsi < oversold).astype(int)
         signal[rsi > overbought] = 0
     elif stype == "macd":
-        fast = int(params.get("fast_ema", 12))
-        slow = int(params.get("slow_ema", 26))
-        signal_len = int(params.get("signal", 9))
+        fast = int(_get_param(params, "fast_ema", "macd_fast", default=12))
+        slow = int(_get_param(params, "slow_ema", "macd_slow", default=26))
+        signal_len = int(_get_param(params, "signal", "macd_signal", default=9))
         macd_line = ema(close, fast) - ema(close, slow)
         macd_signal = ema(macd_line, signal_len)
         signal = (macd_line > macd_signal).astype(int)
     elif stype == "boll_breakout":
-        window = int(params.get("window", 20))
-        mult = float(params.get("std_mult", 2))
+        window = int(_get_param(params, "window", "boll_window", default=20))
+        mult = float(_get_param(params, "std_mult", "boll_std_mult", default=2.0))
         basis = close.rolling(window).mean()
         dev = close.rolling(window).std()
         upper = basis + mult * dev
         signal = (close > upper).astype(int)
         signal[close < basis] = 0
     elif stype == "trend_rsi":
-        trend_window = int(params.get("trend_window", 200))
-        rsi_len = int(params.get("rsi_length", 14))
-        oversold = float(params.get("oversold", 35))
+        trend_window = int(_get_param(params, "trend_window", "trend", default=200))
+        rsi_len = int(_get_param(params, "rsi_length", "length", default=14))
+        oversold = float(_get_param(params, "oversold", "rsi_oversold", default=35))
         ma = close.rolling(trend_window).mean()
         delta = close.diff()
         gain = delta.clip(lower=0).rolling(rsi_len).mean()
@@ -212,14 +220,25 @@ def generate_signal(plan: StrategyPlan, close: pd.Series, high: pd.Series, low: 
     else:
         raise ValueError(f"Strategy {stype} no soportada")
 
-    if plan.trend_filter and plan.trend_filter.get("type") == "sma":
-        window = int(plan.trend_filter.get("window", 100))
-        trend_ma = close.rolling(window).mean()
-        signal = signal * (close > trend_ma).astype(int)
+    if plan.trend_filter:
+        ftype = plan.trend_filter.get("type")
+        if ftype == "sma":
+            window = int(plan.trend_filter.get("window", 100))
+            trend_ma = close.rolling(window).mean()
+            signal = signal * (close > trend_ma).astype(int)
+        elif ftype == "rsi":
+            period = int(plan.trend_filter.get("period", 14))
+            low = float(plan.trend_filter.get("threshold_low", 40))
+            high = float(plan.trend_filter.get("threshold_high", 60))
+            delta = close.diff()
+            gain = delta.clip(lower=0).rolling(period).mean()
+            loss = (-delta.clip(upper=0)).rolling(period).mean()
+            rs = gain / loss.replace(0, np.nan)
+            rsi = 100 - (100 / (1 + rs))
+            signal = signal * ((rsi > low) & (rsi < high)).astype(int)
 
     signal = signal.fillna(0)
     return signal
-
 
 def apply_transaction_costs(signal: pd.Series, returns: pd.Series, plan: StrategyPlan) -> pd.Series:
     shifted = signal.shift(1).fillna(0)
@@ -267,7 +286,7 @@ def build_trade_log(signal: pd.Series, close: pd.Series) -> List[Dict[str, Any]]
     position = 0
     entry_price = 0.0
     entry_time = None
-    for ts, sig in signal.iteritems():
+    for ts, sig in signal.items():
         if position == 0 and sig == 1:
             position = 1
             entry_price = close.loc[ts]
@@ -289,8 +308,14 @@ def build_trade_log(signal: pd.Series, close: pd.Series) -> List[Dict[str, Any]]
 def run_backtest(plan: StrategyPlan) -> Dict[str, Any]:
     data = download_prices(plan)
     close = data["Close"].copy()
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
     high = data.get("High", close)
     low = data.get("Low", close)
+    if isinstance(high, pd.DataFrame):
+        high = high.iloc[:, 0]
+    if isinstance(low, pd.DataFrame):
+        low = low.iloc[:, 0]
     signal = generate_signal(plan, close, high, low)
     returns = close.pct_change().fillna(0)
     strategy_returns = apply_transaction_costs(signal, returns, plan)
@@ -358,6 +383,9 @@ def parse_plan_response(content: str) -> StrategyPlan:
     except ValueError:
         snippet = content
     data = json.loads(snippet)
+    allowed = {"sma_cross", "rsi", "macd", "boll_breakout", "trend_rsi"}
+    if data.get("strategy_type") not in allowed:
+        data["strategy_type"] = "sma_cross"
     return StrategyPlan(**data)
 
 

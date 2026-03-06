@@ -116,7 +116,7 @@
 
 
 # from langgraph.graph import StateGraph, START, END
-# from typing import TypedDict
+# from typing import TypedDict, NotRequired
 # from pydantic import BaseModel, Field
 # from langchain.chat_models import init_chat_model
 
@@ -665,7 +665,7 @@
 
 
 from langgraph.graph import StateGraph, START, END
-from typing import TypedDict
+from typing import TypedDict, NotRequired
 from pydantic import BaseModel, Field
 from langchain.chat_models import init_chat_model
 from langchain_community.vectorstores import FAISS
