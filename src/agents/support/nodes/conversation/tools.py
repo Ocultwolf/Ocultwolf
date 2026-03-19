@@ -1,6 +1,8 @@
-file_search_tool = {
-    "type": "file_search",
-    "vector_store_ids": ["vs_68cf0f0255e481919cd3be25b96c5080"],
-}
+# Tools for the conversation node.
+# OpenAI file_search_tool removed — not compatible with Ollama/Anthropic.
+# Add LangChain-compatible tools here when needed, e.g.:
+#   from langchain_core.tools import tool
+#   @tool
+#   def my_tool(input: str) -> str: ...
 
-tools = [file_search_tool]
+tools = []

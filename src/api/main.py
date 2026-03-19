@@ -2,20 +2,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from pydantic import BaseModel
-
 from fastapi import FastAPI
 from agents.support.agent import make_graph
 from langchain_core.messages import HumanMessage
 from fastapi.responses import StreamingResponse
 from api.db import lifespan, CheckpointerDep
+from api.openclaw_bridge import router as bridge_router
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(title="MongoAI Pro", lifespan=lifespan)
+
+# OpenClaw-compatible bridge (OpenAI format)
+app.include_router(bridge_router)
 
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
-
+    return {"status": "ok", "bridge": "/v1/chat/completions"}
 
 
 class Message(BaseModel):
@@ -23,30 +25,23 @@ class Message(BaseModel):
 
 @app.post("/chat/{chat_id}")
 async def chat(chat_id: str, item: Message, checkpointer: CheckpointerDep):
-    # CRUD add message
-    config = {
-        "configurable": {
-            "thread_id": chat_id,
-        }
-    }
+    config = {"configurable": {"thread_id": chat_id}}
     human_message = HumanMessage(content=item.message)
     agent = make_graph(config={"checkpointer": checkpointer})
-    state = {"messages": [human_message]}
-    response = agent.invoke(state, config)
-    last_message = response["messages"][-1]
-    # CRUD add message
+    response = agent.invoke({"messages": [human_message]}, config)
     return response["messages"]
 
 
 @app.post("/chat/{chat_id}/stream")
 async def stream_chat(chat_id: str, message: Message, checkpointer: CheckpointerDep):
     human_message = HumanMessage(content=message.message)
+
     async def generate_response():
         agent = make_graph(config={"checkpointer": checkpointer})
-        for message_chunk, metadata in agent.stream({"messages": [human_message]}, stream_mode="messages"):
+        for message_chunk, metadata in agent.stream(
+            {"messages": [human_message]}, stream_mode="messages"
+        ):
             if message_chunk.content:
                 yield f"data: {message_chunk.content}\n\n"
-
-        print(message_chunk.content, end="|", flush=True)
 
     return StreamingResponse(generate_response(), media_type="text/event-stream")
